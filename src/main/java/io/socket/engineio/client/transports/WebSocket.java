@@ -23,7 +23,7 @@ public class WebSocket extends Transport {
 
     public static final String NAME = "websocket";
 
-    private static final Logger logger = Logger.getLogger(PollingXHR.class.getName());
+    private static final Logger logger = Logger.getLogger(WebSocket.class.getName());
 
     private okhttp3.WebSocket ws;
 
