@@ -2,6 +2,7 @@ package io.socket.engineio.client;
 
 import io.socket.emitter.Emitter;
 import io.socket.engineio.client.transports.Polling;
+import io.socket.engineio.listener.Listener;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -30,19 +31,13 @@ public class BinaryPollingTest extends Connection {
         opts.transports = new String[] {Polling.NAME};
 
         socket = new Socket(opts);
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.send(binaryData);
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        if ("hi".equals(args[0])) return;
+        socket.on(Socket.EVENT_OPEN, args -> {
+            socket.send(binaryData);
+            socket.on(Socket.EVENT_MESSAGE, args1 -> {
+                if ("hi".equals(args1[0])) return;
 
-                        values.offer(args[0]);
-                    }
-                });
-            }
+                values.offer(args1[0]);
+            });
         });
         socket.open();
 
@@ -64,21 +59,15 @@ public class BinaryPollingTest extends Connection {
         opts.port = PORT;
         opts.transports = new String[] {Polling.NAME};
         socket = new Socket(opts);
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.send(binaryData);
-                socket.send("cash money €€€");
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        if ("hi".equals(args[0])) return;
+        socket.on(Socket.EVENT_OPEN, args -> {
+            socket.send(binaryData);
+            socket.send("cash money €€€");
+            socket.on(Socket.EVENT_MESSAGE, args1 -> {
+                if ("hi".equals(args1[0])) return;
 
-                        values.offer(args[0]);
-                        msg[0]++;
-                    }
-                });
-            }
+                values.offer(args1[0]);
+                msg[0]++;
+            });
         });
         socket.open();
 

@@ -1,6 +1,9 @@
 package io.socket.emitter;
 
 
+import io.socket.engineio.listener.Listener;
+import io.socket.engineio.listener.OnceListener;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -16,8 +19,8 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class Emitter {
 
-    private ConcurrentMap<String, ConcurrentLinkedQueue<Listener>> callbacks
-            = new ConcurrentHashMap<String, ConcurrentLinkedQueue<Listener>>();
+    private final ConcurrentMap<String, ConcurrentLinkedQueue<Listener>> callbacks
+            = new ConcurrentHashMap<>();
 
     /**
      * Listens on the event.
@@ -46,7 +49,7 @@ public class Emitter {
      * @return a reference to this object.
      */
     public Emitter once(final String event, final Listener fn) {
-        this.on(event, new OnceListener(event, fn));
+        this.on(event, new OnceListener(event, fn, (m) -> this.off(m.getKey(), m.getValue())));
         return this;
     }
 
@@ -143,25 +146,4 @@ public class Emitter {
         return callbacks != null && !callbacks.isEmpty();
     }
 
-    public static interface Listener {
-
-        public void call(Object... args);
-    }
-
-    private class OnceListener implements Listener {
-
-        public final String event;
-        public final Listener fn;
-
-        public OnceListener(String event, Listener fn) {
-            this.event = event;
-            this.fn = fn;
-        }
-
-        @Override
-        public void call(Object... args) {
-            Emitter.this.off(this.event, this);
-            this.fn.call(args);
-        }
-    }
 }

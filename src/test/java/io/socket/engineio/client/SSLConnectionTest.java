@@ -1,10 +1,15 @@
 package io.socket.engineio.client;
 
+import okhttp3.OkHttpClient;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -12,14 +17,6 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-
-import io.socket.emitter.Emitter;
-import okhttp3.OkHttpClient;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -92,17 +89,7 @@ public class SSLConnectionTest extends Connection {
         opts.callFactory = sOkHttpClient;
         opts.webSocketFactory = sOkHttpClient;
         socket = new Socket(opts);
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        values.offer(args[0]);
-                    }
-                });
-            }
-        });
+        socket.on(Socket.EVENT_OPEN, args -> socket.on(Socket.EVENT_MESSAGE, args1 -> values.offer(args1[0])));
         socket.open();
 
         assertThat((String)values.take(), is("hi"));
@@ -117,23 +104,10 @@ public class SSLConnectionTest extends Connection {
         opts.callFactory = sOkHttpClient;
         opts.webSocketFactory = sOkHttpClient;
         socket = new Socket(opts);
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.on(Socket.EVENT_UPGRADE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        socket.send("hi");
-                        socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                            @Override
-                            public void call(Object... args) {
-                                values.offer(args[0]);
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        socket.on(Socket.EVENT_OPEN, args -> socket.on(Socket.EVENT_UPGRADE, args1 -> {
+            socket.send("hi");
+            socket.on(Socket.EVENT_MESSAGE, args2 -> values.offer(args2[0]));
+        }));
         socket.open();
 
         assertThat((String)values.take(), is("hi"));
@@ -147,17 +121,7 @@ public class SSLConnectionTest extends Connection {
         Socket.setDefaultOkHttpWebSocketFactory(sOkHttpClient);
         Socket.setDefaultOkHttpCallFactory(sOkHttpClient);
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        values.offer(args[0]);
-                    }
-                });
-            }
-        });
+        socket.on(Socket.EVENT_OPEN, args -> socket.on(Socket.EVENT_MESSAGE, args1 -> values.offer(args1[0])));
         socket.open();
 
         assertThat((String)values.take(), is("hi"));

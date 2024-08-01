@@ -1,6 +1,5 @@
 package io.socket.engineio.client.executions;
 
-import io.socket.emitter.Emitter;
 import io.socket.engineio.client.Socket;
 import okhttp3.OkHttpClient;
 
@@ -15,19 +14,11 @@ public class Connection {
         opts.callFactory = client;
 
         final Socket socket = new Socket("http://localhost:" + System.getenv("PORT"), opts);
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                System.out.println("open");
-                socket.close();
-            }
+        socket.on(Socket.EVENT_OPEN, args1 -> {
+            System.out.println("open");
+            socket.close();
         });
-        socket.on(Socket.EVENT_CLOSE, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                client.dispatcher().executorService().shutdown();
-            }
-        });
+        socket.on(Socket.EVENT_CLOSE, args2 -> client.dispatcher().executorService().shutdown());
         socket.open();
     }
 }

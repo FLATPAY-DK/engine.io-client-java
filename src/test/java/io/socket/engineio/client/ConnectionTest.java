@@ -1,6 +1,5 @@
 package io.socket.engineio.client;
 
-import io.socket.emitter.Emitter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -23,18 +22,10 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        values.offer(args[0]);
-                        socket.close();
-                    }
-                });
-            }
-        });
+        socket.on(Socket.EVENT_OPEN, args -> socket.on(Socket.EVENT_MESSAGE, args1 -> {
+            values.offer(args1[0]);
+            socket.close();
+        }));
         socket.open();
 
         assertThat((String)values.take(), is("hi"));
@@ -45,19 +36,13 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.send("cash money €€€");
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        if ("hi".equals(args[0])) return;
-                        values.offer(args[0]);
-                        socket.close();
-                    }
-                });
-            }
+        socket.on(Socket.EVENT_OPEN, args -> {
+            socket.send("cash money €€€");
+            socket.on(Socket.EVENT_MESSAGE, args1 -> {
+                if ("hi".equals(args1[0])) return;
+                values.offer(args1[0]);
+                socket.close();
+            });
         });
         socket.open();
 
@@ -69,19 +54,13 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.send("\uD800\uDC00-\uDB7F\uDFFF\uDB80\uDC00-\uDBFF\uDFFF\uE000-\uF8FF");
-                socket.on(Socket.EVENT_MESSAGE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        if ("hi".equals(args[0])) return;
-                        values.offer(args[0]);
-                        socket.close();
-                    }
-                });
-            }
+        socket.on(Socket.EVENT_OPEN, args -> {
+            socket.send("\uD800\uDC00-\uDB7F\uDFFF\uDB80\uDC00-\uDBFF\uDFFF\uE000-\uF8FF");
+            socket.on(Socket.EVENT_MESSAGE, args1 -> {
+                if ("hi".equals(args1[0])) return;
+                values.offer(args1[0]);
+                socket.close();
+            });
         });
         socket.open();
 
@@ -93,27 +72,19 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                final boolean[] noPacket = new boolean[] {true};
-                socket.on(Socket.EVENT_PACKET_CREATE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        noPacket[0] = false;
-                    }
-                });
-                socket.close();
-                socket.send("hi");
-                Timer timer = new Timer();
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        values.offer(noPacket[0]);
-                    }
-                }, 1200);
+        socket.on(Socket.EVENT_OPEN, args -> {
+            final boolean[] noPacket = new boolean[] {true};
+            socket.on(Socket.EVENT_PACKET_CREATE, args1 -> noPacket[0] = false);
+            socket.close();
+            socket.send("hi");
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    values.offer(noPacket[0]);
+                }
+            }, 1200);
 
-            }
         });
         socket.open();
         assertThat((Boolean)values.take(), is(true));
@@ -124,28 +95,12 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                final boolean[] upgraded = new boolean[] {false};
-                socket.on(Socket.EVENT_UPGRADE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        upgraded[0] = true;
-                    }
-                }).on(Socket.EVENT_UPGRADING, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        socket.on(Socket.EVENT_CLOSE, new Emitter.Listener() {
-                            @Override
-                            public void call(Object... args) {
-                                values.offer(upgraded[0]);
-                            }
-                        });
-                        socket.close();
-                    }
-                });
-            }
+        socket.on(Socket.EVENT_OPEN, args -> {
+            final boolean[] upgraded = new boolean[] {false};
+            socket.on(Socket.EVENT_UPGRADE, args3 -> upgraded[0] = true).on(Socket.EVENT_UPGRADING, args2 -> {
+                socket.on(Socket.EVENT_CLOSE, args1 -> values.offer(upgraded[0]));
+                socket.close();
+            });
         });
         socket.open();
         assertThat((Boolean)values.take(), is(true));
@@ -156,29 +111,13 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                final boolean[] upgradError = new boolean[] {false};
-                socket.on(Socket.EVENT_UPGRADE_ERROR, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        upgradError[0] = true;
-                    }
-                }).on(Socket.EVENT_UPGRADING, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        socket.on(Socket.EVENT_CLOSE, new Emitter.Listener() {
-                            @Override
-                            public void call(Object... args) {
-                                values.offer(upgradError[0]);
-                            }
-                        });
-                        socket.close();
-                        socket.transport.onError("upgrade error", new Exception());
-                    }
-                });
-            }
+        socket.on(Socket.EVENT_OPEN, args -> {
+            final boolean[] upgradError = new boolean[] {false};
+            socket.on(Socket.EVENT_UPGRADE_ERROR, args3 -> upgradError[0] = true).on(Socket.EVENT_UPGRADING, args2 -> {
+                socket.on(Socket.EVENT_CLOSE, args1 -> values.offer(upgradError[0]));
+                socket.close();
+                socket.transport.onError("upgrade error", new Exception());
+            });
         });
         socket.open();
         assertThat((Boolean) values.take(), is(true));
@@ -188,30 +127,19 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                final boolean[] noPacket = new boolean[] {true};
-                socket.on(Socket.EVENT_UPGRADING, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        socket.on(Socket.EVENT_PACKET_CREATE, new Emitter.Listener() {
-                            @Override
-                            public void call(Object... args) {
-                                noPacket[0] = false;
-                            }
-                        });
-                        socket.close();
-                        socket.send("hi");
-                    }
-                });
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        values.offer(noPacket[0]);
-                    }
-                }, 1200);
-            }
+        socket.on(Socket.EVENT_OPEN, args -> {
+            final boolean[] noPacket = new boolean[] {true};
+            socket.on(Socket.EVENT_UPGRADING, args2 -> {
+                socket.on(Socket.EVENT_PACKET_CREATE, args1 -> noPacket[0] = false);
+                socket.close();
+                socket.send("hi");
+            });
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    values.offer(noPacket[0]);
+                }
+            }, 1200);
         });
         socket.open();
         assertThat((Boolean) values.take(), is(true));
@@ -222,23 +150,10 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<Object> values = new LinkedBlockingQueue<Object>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_OPEN, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                socket.on(Socket.EVENT_UPGRADING, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        socket.send("hi");
-                        socket.close();
-                    }
-                }).on(Socket.EVENT_CLOSE, new Emitter.Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        values.offer(socket.writeBuffer.size());
-                    }
-                });
-            }
-        });
+        socket.on(Socket.EVENT_OPEN, args -> socket.on(Socket.EVENT_UPGRADING, args2 -> {
+            socket.send("hi");
+            socket.close();
+        }).on(Socket.EVENT_CLOSE, args1 -> values.offer(socket.writeBuffer.size())));
         socket.open();
         assertThat((Integer) values.take(), is(0));
     }
@@ -248,12 +163,9 @@ public class ConnectionTest extends Connection {
         final BlockingQueue<String> values = new LinkedBlockingQueue<>();
 
         socket = new Socket(createOptions());
-        socket.on(Socket.EVENT_PING, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                values.offer("end");
-                socket.close();
-            }
+        socket.on(Socket.EVENT_PING, args -> {
+            values.offer("end");
+            socket.close();
         });
         socket.open();
         assertThat(values.take(), is("end"));

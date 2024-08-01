@@ -1,5 +1,6 @@
 package io.socket.engineio.client;
 
+import io.socket.engineio.listener.Listener;
 import org.json.JSONException;
 
 import java.net.URI;
@@ -129,12 +130,7 @@ public class Socket extends Emitter {
 
     private ReadyState readyState;
     private ScheduledExecutorService heartbeatScheduler;
-    private final Listener onHeartbeatAsListener = new Listener() {
-        @Override
-        public void call(Object... args) {
-            Socket.this.onHeartbeat();
-        }
-    };
+    private final Listener onHeartbeatAsListener = args -> Socket.this.onHeartbeat();
 
     public Socket() {
         this(new Options());
