@@ -3,15 +3,19 @@ package io.socket.engineio.client;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import io.socket.emitter.Emitter;
 import io.socket.engineio.parser.Packet;
 import io.socket.engineio.parser.Parser;
+import io.socket.reflection.PropertiesInspector;
 import io.socket.thread.EventThread;
 import okhttp3.Call;
 import okhttp3.WebSocket;
 
 public abstract class Transport extends Emitter {
+
+    private static final Logger logger = Logger.getLogger(Transport.class.getName());
 
     protected enum ReadyState {
         OPENING, OPEN, CLOSED, PAUSED;
@@ -61,7 +65,10 @@ public abstract class Transport extends Emitter {
     }
 
     protected Transport onError(String msg, Exception desc) {
-        // TODO: handle error
+        logger.severe(
+                "An error occurred in transport - message: " + msg +
+                        ", exception:" + PropertiesInspector.getProperties(desc)
+        );
         Exception err = new EngineIOException(msg, desc);
         this.emit(EVENT_ERROR, err);
         return this;

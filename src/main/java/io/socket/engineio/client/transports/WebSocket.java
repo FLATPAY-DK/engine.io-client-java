@@ -5,6 +5,7 @@ import io.socket.engineio.client.Transport;
 import io.socket.engineio.parser.Packet;
 import io.socket.engineio.parser.Parser;
 import io.socket.parseqs.ParseQS;
+import io.socket.reflection.PropertiesInspector;
 import io.socket.thread.EventThread;
 import io.socket.yeast.Yeast;
 import okhttp3.Request;
@@ -12,10 +13,7 @@ import okhttp3.Response;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.logging.Logger;
 
 
@@ -33,7 +31,8 @@ public class WebSocket extends Transport {
     }
 
     protected void doOpen() {
-        Map<String, List<String>> headers = new TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER);
+        logger.fine("Opening websocket connection");
+        Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         if (this.extraHeaders != null) {
             headers.putAll(this.extraHeaders);
         }
@@ -50,7 +49,15 @@ public class WebSocket extends Transport {
         ws = webSocketFactory.newWebSocket(request, new WebSocketListener() {
             @Override
             public void onOpen(okhttp3.WebSocket webSocket, Response response) {
-                final Map<String, List<String>> headers = response.headers().toMultimap();
+                logger.info(
+                        "Opened websocket connection - websocket: "
+                                + PropertiesInspector.getProperties(webSocket) +
+                                ((response != null)
+                                ?  " response body: " + PropertiesInspector.getProperties(response.body())
+                                        + " response headers: " + response.headers()
+                                : "")
+                );
+	            final Map<String, List<String>> headers = response.headers().toMultimap();
                 EventThread.exec(new Runnable() {
                     @Override
                     public void run() {
@@ -62,6 +69,7 @@ public class WebSocket extends Transport {
 
             @Override
             public void onMessage(okhttp3.WebSocket webSocket, final String text) {
+                logger.fine("Websocket received message: " + text);
                 if (text == null) {
                     return;
                 }
@@ -75,6 +83,7 @@ public class WebSocket extends Transport {
 
             @Override
             public void onMessage(okhttp3.WebSocket webSocket, final ByteString bytes) {
+                logger.fine("Websocket received message: " + bytes);
                 if (bytes == null) {
                     return;
                 }
@@ -88,6 +97,7 @@ public class WebSocket extends Transport {
 
             @Override
             public void onClosed(okhttp3.WebSocket webSocket, int code, String reason) {
+                logger.info("Websocket received onClosed - reason: " + reason + " code: " + code);
                 EventThread.exec(new Runnable() {
                     @Override
                     public void run() {
@@ -98,6 +108,12 @@ public class WebSocket extends Transport {
 
             @Override
             public void onFailure(okhttp3.WebSocket webSocket, final Throwable t, Response response) {
+                logger.severe(
+                "A Websocket error occurred exception: " + PropertiesInspector.getProperties(t) +
+                        ((response != null)
+                        ? " response body: " + response.body() + " response headers: " + response.headers()
+                        : "")
+                );
                 if (!(t instanceof Exception)) {
                     return;
                 }
@@ -140,16 +156,19 @@ public class WebSocket extends Transport {
             Parser.encodePacket(packet, new Parser.EncodeCallback() {
                 @Override
                 public void call(Object packet) {
+                    boolean packetSend = false;
                     try {
                         if (packet instanceof String) {
-                            self.ws.send((String) packet);
+                             packetSend = self.ws.send((String) packet);
                         } else if (packet instanceof byte[]) {
-                            self.ws.send(ByteString.of((byte[]) packet));
+                            packetSend = self.ws.send(ByteString.of((byte[]) packet));
                         }
                     } catch (IllegalStateException e) {
-                        logger.fine("websocket closed before we could write");
+                        logger.severe("websocket closed before we could write");
                     }
-
+                    if (!packetSend) {
+                        logger.severe("Packet: " + packet + " could not be sent");
+                    }
                     if (0 == --total[0]) done.run();
                 }
             });
@@ -158,6 +177,7 @@ public class WebSocket extends Transport {
 
     protected void doClose() {
         if (ws != null) {
+            logger.severe("Closing websocket connection");
             ws.close(1000, "");
             ws = null;
         }
