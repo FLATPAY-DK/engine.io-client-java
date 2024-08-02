@@ -506,14 +506,14 @@ public class Socket extends Emitter {
     }
 
     private void onOpen() {
-        logger.fine("socket open");
+        logger.info("Socket open");
         this.readyState = ReadyState.OPEN;
         Socket.priorWebsocketSuccess = WebSocket.NAME.equals(this.transport.name);
         this.emit(EVENT_OPEN);
         this.flush();
 
         if (this.readyState == ReadyState.OPEN && this.upgrade && this.transport instanceof Polling) {
-            logger.fine("starting upgrade probes");
+            logger.info("Starting upgrade");
             for (String upgrade: this.upgrades) {
                 this.probe(upgrade);
             }
@@ -524,10 +524,7 @@ public class Socket extends Emitter {
         if (this.readyState == ReadyState.OPENING ||
                 this.readyState == ReadyState.OPEN ||
                 this.readyState == ReadyState.CLOSING) {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("socket received: type '%s', data '%s'", packet.type, packet.data));
-            }
-
+            logger.fine(String.format("Socket received: type '%s', data '%s'", packet.type, packet.data));
             this.emit(EVENT_PACKET, packet);
             this.emit(EVENT_HEARTBEAT);
 
